@@ -6,12 +6,27 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"sync"
 
 	"cloud.google.com/go/firestore"
 	"google.golang.org/api/iterator"
 )
 
 var client *firestore.Client
+var clientOnce sync.Once
+
+func getClient(w http.ResponseWriter) *firestore.Client {
+	clientOnce.Do(func() {
+		var err error
+		client, err = firestore.NewClient(context.Background(), os.Getenv("GCP_PROJECT"))
+		if err != nil {
+			http.Error(w, "Internal error", http.StatusInternalServerError)
+			log.Printf("firestore.NewClient: %v", err)
+			return
+		}
+	})
+	return client
+}
 
 // MachineHttp is an HTTP Cloud Function that CRUDs a Machine document in the firestore
 func MachineHttp(w http.ResponseWriter, r *http.Request) {
@@ -25,15 +40,7 @@ func MachineHttp(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	if client == nil {
-		var err error
-		client, err = firestore.NewClient(context.Background(), os.Getenv("GCP_PROJECT"))
-		if err != nil {
-			http.Error(w, "Internal error", http.StatusInternalServerError)
-			log.Printf("firestore.NewClient: %v", err)
-			return
-		}
-	}
+	client = getClient(w)
 	iter := client.Collection("machines").Documents(r.Context())
 	defer iter.Stop()
 	for {

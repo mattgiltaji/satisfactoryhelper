@@ -1,7 +1,6 @@
 package cloudfuncs
 
 import (
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -9,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestMachineHttpMethodCheck(t *testing.T) {
+func TestMachineHttpBadMethods(t *testing.T) {
 	testCases := []struct {
 		method         string
 		expectedStatus int
@@ -26,6 +25,17 @@ func TestMachineHttpMethodCheck(t *testing.T) {
 		MachineHttp(rr, req)
 
 		resp := rr.Result()
-		is.Equal(resp.StatusCode, testCase.expectedStatus, fmt.Sprintf("%s should fail, not implemented yet", testCase.method))
+		is.Equal(testCase.expectedStatus, resp.StatusCode, "%s should fail, not implemented yet", testCase.method)
 	}
+}
+
+func TestMachineHttpGet(t *testing.T) {
+
+	is := assert.New(t)
+	req := httptest.NewRequest("GET", "/", nil)
+	rr := httptest.NewRecorder()
+	MachineHttp(rr, req)
+
+	resp := rr.Result()
+	is.Equal(http.StatusInternalServerError, resp.StatusCode, "GET should be ok, but internal error for unable to connect to test project on local is fine too")
 }

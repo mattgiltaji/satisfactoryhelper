@@ -16,12 +16,17 @@ func MachineHttp(w http.ResponseWriter, r *http.Request) {
 		_, err := fmt.Fprintf(w, "%s method not currently supported", r.Method)
 		if err != nil {
 			http.Error(w, "Error printing error", http.StatusInternalServerError)
-			log.Printf(" fmt.Fprintf( method not currently supported): %v", err)
+			log.Printf("fmt.Fprintf( method not currently supported): %v", err)
 			return
 		}
 		return
 	}
 	client = getClient(w)
+	if client == nil {
+		http.Error(w, "Error connecting to firestore", http.StatusInternalServerError)
+		log.Printf("Error connecting to firestore")
+		return
+	}
 	iter := client.Collection("machines").Documents(r.Context())
 	defer iter.Stop()
 	for {

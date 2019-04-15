@@ -8,6 +8,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+//look into https://cloud.google.com/sdk/gcloud/reference/beta/emulators/firestore/
+
 func TestMachineHttpBadMethods(t *testing.T) {
 	testCases := []struct {
 		method         string
@@ -37,5 +39,5 @@ func TestMachineHttpGet(t *testing.T) {
 	MachineHttp(rr, req)
 
 	resp := rr.Result()
-	is.Equal(http.StatusInternalServerError, resp.StatusCode, "GET should be ok, but internal error for unable to connect to test project on local is fine too")
+	is.Equal(http.StatusOK, resp.StatusCode, "GET should be ok")
 }

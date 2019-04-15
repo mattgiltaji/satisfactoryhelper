@@ -1,12 +1,18 @@
 package cloudfuncs
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 
 	"google.golang.org/api/iterator"
 )
+
+type Machine struct {
+	Name  string `json:"name,omitempty" firestore:"name,omitempty"`
+	Power int    `json:"power,omitempty" firestore:"power,omitempty"`
+}
 
 // MachineHttp is an HTTP Cloud Function that CRUDs a Machine document in the firestore
 func MachineHttp(w http.ResponseWriter, r *http.Request) {
@@ -30,6 +36,7 @@ func MachineHttp(w http.ResponseWriter, r *http.Request) {
 	iter := client.Collection("machines").Documents(r.Context())
 	defer iter.Stop()
 	for {
+		var machine Machine
 		doc, err := iter.Next()
 		if err == iterator.Done {
 			break
@@ -39,10 +46,17 @@ func MachineHttp(w http.ResponseWriter, r *http.Request) {
 			log.Printf("firestore.Collection(machines).Documents: %v", err)
 			return
 		}
-		_, err2 := fmt.Fprintln(w, doc.Data())
+		err2 := doc.DataTo(&machine)
+		if err2 != nil {
+			http.Error(w, "Error loading machine data", http.StatusInternalServerError)
+			log.Printf("firestore.Document.DataTo: %v", err2)
+			return
+		}
+		jsonData, _ := json.MarshalIndent(machine, "", "    ")
+		_, err2 = fmt.Fprintln(w, string(jsonData))
 		if err2 != nil {
 			http.Error(w, "Error printing machine data", http.StatusInternalServerError)
-			log.Printf(" fmt.Fprintln(doc.Data()): %v", err)
+			log.Printf("fmt.Fprintln(w, string(jsonData))): %v", err)
 			return
 		}
 	}

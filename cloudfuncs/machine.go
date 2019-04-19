@@ -1,11 +1,14 @@
 package cloudfuncs
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 
+	"cloud.google.com/go/firestore"
+	"github.com/juju/errors"
 	"google.golang.org/api/iterator"
 )
 
@@ -33,7 +36,25 @@ func MachineHttp(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Error connecting to firestore")
 		return
 	}
-	iter := client.Collection("machines").Documents(r.Context())
+
+	machines, err := getAllMachines(r.Context(), client)
+	if err != nil {
+		http.Error(w, "Error locating machine data", http.StatusInternalServerError)
+		log.Printf("getAllMachines(): %v", err)
+		return
+	}
+	jsonData, _ := json.MarshalIndent(machines, "", "    ")
+	_, err = fmt.Fprintln(w, string(jsonData))
+	if err != nil {
+		http.Error(w, "Error printing machine data", http.StatusInternalServerError)
+		log.Printf("fmt.Fprintln(w, string(jsonData))): %v", err)
+		return
+	}
+
+}
+
+func getAllMachines(ctx context.Context, client *firestore.Client) (machines []Machine, err error) {
+	iter := client.Collection("machines").Documents(ctx)
 	defer iter.Stop()
 	for {
 		var machine Machine
@@ -42,23 +63,13 @@ func MachineHttp(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 		if err != nil {
-			http.Error(w, "Error locating machine data", http.StatusInternalServerError)
-			log.Printf("firestore.Collection(machines).Documents: %v", err)
-			return
+			return machines, errors.Annotate(err, "iterator broke while loading all machine data from firestore.")
 		}
-		err2 := doc.DataTo(&machine)
-		if err2 != nil {
-			http.Error(w, "Error loading machine data", http.StatusInternalServerError)
-			log.Printf("firestore.Document.DataTo: %v", err2)
-			return
+		err = doc.DataTo(&machine)
+		if err != nil {
+			return machines, errors.Annotatef(err, "unable to parse specific machine's data: %v", doc.Data())
 		}
-		jsonData, _ := json.MarshalIndent(machine, "", "    ")
-		_, err2 = fmt.Fprintln(w, string(jsonData))
-		if err2 != nil {
-			http.Error(w, "Error printing machine data", http.StatusInternalServerError)
-			log.Printf("fmt.Fprintln(w, string(jsonData))): %v", err)
-			return
-		}
+		machines = append(machines, machine)
 	}
-
+	return
 }

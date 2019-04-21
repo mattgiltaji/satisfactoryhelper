@@ -42,20 +42,84 @@ func TestMachineHttpGet(t *testing.T) {
 	is.Equal(http.StatusOK, resp.StatusCode, "GET should be ok")
 }
 
-func TestGetAllMachines(t *testing.T) {
+func TestGetAllMachinesZeroResults(t *testing.T) {
 	is := assert.New(t)
 	ctx := context.Background()
 	client = getTestClient(ctx, t)
-	//TODO: use a test firestore that we can try querying with zero, one, and many machines
+
+	//zero results
+	actual, err := getAllMachines(ctx, client)
+	is.NoError(err, "getAllMachines() should not error out if no machines found")
+	is.Equal(0, len(actual))
+	is.Equal([]Machine(nil), actual, "getAllMachines() should not return any machines if there is nothing in the firestore")
+
+}
+
+func TestGetAllMachinesOneGoodResult(t *testing.T) {
+	is := assert.New(t)
+	ctx := context.Background()
+	client = getTestClient(ctx, t)
+	coll := client.Collection("machines")
+
+	assembler, _, _ := coll.Add(ctx, map[string]interface{}{
+		"name":  "Assembler",
+		"power": 15,
+	})
+	defer assembler.Delete(ctx)
+	expectedAssembler := Machine{"Assembler", 15}
 
 	actual, err := getAllMachines(ctx, client)
-	is.NoError(err, "getAllMachines() should not error out")
-	is.Equal(5, len(actual))
-	is.Contains(actual, Machine{"Assembler", 15})
-	is.Contains(actual, Machine{"Constructor", 4})
-	is.Contains(actual, Machine{"Foundry", 16})
-	is.Contains(actual, Machine{"Smelter", 4})
-	is.Contains(actual, Machine{"Manufacturer", 55})
-	//don't do equals because we can't assume retrieval order
+	is.NoError(err, "getAllMachines() should not error out if one machine found")
+	is.Equal(1, len(actual))
+	is.Contains(actual, expectedAssembler)
+}
 
+func TestGetAllMachinesSeveralGoodResults(t *testing.T) {
+	is := assert.New(t)
+	ctx := context.Background()
+	client = getTestClient(ctx, t)
+	coll := client.Collection("machines")
+	constructor, _, _ := coll.Add(ctx, map[string]interface{}{
+		"name":  "Constructor",
+		"power": 4,
+	})
+	defer constructor.Delete(ctx)
+	foundry, _, _ := coll.Add(ctx, map[string]interface{}{
+		"name":  "Foundry",
+		"power": 16,
+	})
+	defer foundry.Delete(ctx)
+	expectedConstructor := Machine{"Constructor", 4}
+	expectedFoundry := Machine{"Foundry", 16}
+
+	actual, err := getAllMachines(ctx, client)
+	is.NoError(err, "getAllMachines() should not error out if multiple machines found")
+	is.Equal(2, len(actual))
+	is.Contains(actual, expectedConstructor)
+	is.Contains(actual, expectedFoundry)
+	//don't do equals because we can't assume retrieval order
+}
+
+func TestGetAllMachinesBadResult(t *testing.T) {
+	is := assert.New(t)
+	ctx := context.Background()
+	client = getTestClient(ctx, t)
+	coll := client.Collection("machines")
+
+	constructor, _, _ := coll.Add(ctx, map[string]interface{}{
+		"name":  "Constructor",
+		"power": 4,
+	})
+	defer constructor.Delete(ctx)
+	expectedConstructor := Machine{"Constructor", 4}
+	foundry, _, _ := coll.Add(ctx, map[string]interface{}{
+		"name":  "Foundry",
+		"power": "16",
+	})
+	defer foundry.Delete(ctx)
+	//expectedAssembler := Machine{"Assembler", 15}
+
+	actual, err := getAllMachines(ctx, client)
+	is.Error(err, "getAllMachines() should error out if it can't convert results to Machine type")
+	is.Contains(actual, expectedConstructor, "getAllMachines() should still return whatever it had before the bad data")
 }

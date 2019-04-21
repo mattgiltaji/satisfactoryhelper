@@ -12,6 +12,8 @@ import (
 	"google.golang.org/api/iterator"
 )
 
+const pathToMachinesInFirestore = "machines"
+
 type Machine struct {
 	Name  string `json:"name,omitempty" firestore:"name,omitempty"`
 	Power int    `json:"power,omitempty" firestore:"power,omitempty"`
@@ -53,8 +55,9 @@ func MachineHttp(w http.ResponseWriter, r *http.Request) {
 
 }
 
+//getAllMachines returns all machines in the firestore
 func getAllMachines(ctx context.Context, client *firestore.Client) (machines []Machine, err error) {
-	iter := client.Collection("machines").Documents(ctx)
+	iter := client.Collection(pathToMachinesInFirestore).Documents(ctx)
 	defer iter.Stop()
 	for {
 		var machine Machine
@@ -71,5 +74,30 @@ func getAllMachines(ctx context.Context, client *firestore.Client) (machines []M
 		}
 		machines = append(machines, machine)
 	}
+	return
+}
+
+//getMachineByName returns a single machine with a matching name or an IsNotFound error if no such machine is in firestore
+//we rely on the addMachine logic to ensure that there are no Machines with duplicate names
+func getMachineByName(ctx context.Context, client *firestore.Client, name string) (machine Machine, err error) {
+	q := client.Collection(pathToMachinesInFirestore).Where("name", "==", name)
+	iter := q.Documents(ctx)
+	defer iter.Stop()
+	for {
+		doc, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return machine, errors.Annotate(err, "iterator broke while loading specific machine data from firestore.")
+		}
+		err = doc.DataTo(&machine)
+		if err != nil {
+			return machine, errors.Annotatef(err, "unable to parse specific machine's data: %v", doc.Data())
+		}
+		//assume no multiple results from firestore so no need to loop again
+		return machine, err
+	}
+	err = errors.NotFoundf("No machine with name %v", name)
 	return
 }

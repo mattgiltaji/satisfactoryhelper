@@ -65,7 +65,7 @@ func TestGetAllMachinesOneGoodResult(t *testing.T) {
 		"name":  "Assembler",
 		"power": 15,
 	})
-	defer assembler.Delete(ctx)
+	defer deleteDocRef(ctx, t, assembler)
 	expectedAssembler := Machine{"Assembler", 15}
 
 	actual, err := getAllMachines(ctx, client)
@@ -83,12 +83,12 @@ func TestGetAllMachinesSeveralGoodResults(t *testing.T) {
 		"name":  "Constructor",
 		"power": 4,
 	})
-	defer constructor.Delete(ctx)
+	defer deleteDocRef(ctx, t, constructor)
 	foundry, _, _ := coll.Add(ctx, map[string]interface{}{
 		"name":  "Foundry",
 		"power": 16,
 	})
-	defer foundry.Delete(ctx)
+	defer deleteDocRef(ctx, t, foundry)
 	expectedConstructor := Machine{"Constructor", 4}
 	expectedFoundry := Machine{"Foundry", 16}
 
@@ -106,20 +106,13 @@ func TestGetAllMachinesBadResult(t *testing.T) {
 	client = getTestClient(ctx, t)
 	coll := client.Collection("machines")
 
-	constructor, _, _ := coll.Add(ctx, map[string]interface{}{
-		"name":  "Constructor",
-		"power": 4,
-	})
-	defer constructor.Delete(ctx)
-	expectedConstructor := Machine{"Constructor", 4}
 	foundry, _, _ := coll.Add(ctx, map[string]interface{}{
 		"name":  "Foundry",
 		"power": "16",
 	})
-	defer foundry.Delete(ctx)
+	defer deleteDocRef(ctx, t, foundry)
 	//expectedAssembler := Machine{"Assembler", 15}
 
-	actual, err := getAllMachines(ctx, client)
+	_, err := getAllMachines(ctx, client)
 	is.Error(err, "getAllMachines() should error out if it can't convert results to Machine type")
-	is.Contains(actual, expectedConstructor, "getAllMachines() should still return whatever it had before the bad data")
 }

@@ -15,7 +15,7 @@ import (
 var client *firestore.Client
 var clientOnce sync.Once
 
-func getenv(key, fallback string) string {
+func getEnv(key, fallback string) string {
 	value := os.Getenv(key)
 	if len(value) == 0 {
 		return fallback
@@ -26,7 +26,7 @@ func getenv(key, fallback string) string {
 func getClient(w http.ResponseWriter) *firestore.Client {
 	clientOnce.Do(func() {
 		var err error
-		//TODO: see how we encrypt the credentialfile for CI/CD
+		//TODO: see how we encrypt the credential file for CI/CD
 		googleAuthFileName := "test-statisfactory-helper-auth.json"
 		workingDir, err := os.Getwd()
 		if err != nil {
@@ -35,12 +35,12 @@ func getClient(w http.ResponseWriter) *firestore.Client {
 		}
 		googleAuthFileLocation := filepath.Join(workingDir, googleAuthFileName)
 
-		//only try to use the authfile to connect if it exists
+		//only try to use the auth file to connect if it exists
 		if _, err := os.Stat(googleAuthFileLocation); os.IsNotExist(err) {
-			//no auth file, fallback to default creds
-			client, err = firestore.NewClient(context.Background(), getenv("GCP_PROJECT", "bad_proj"))
+			//no auth file, fallback to default credentials
+			client, err = firestore.NewClient(context.Background(), getEnv("GCP_PROJECT", "bad_proj"))
 		} else {
-			client, err = firestore.NewClient(context.Background(), getenv("GCP_PROJECT", "bad_proj"),
+			client, err = firestore.NewClient(context.Background(), getEnv("GCP_PROJECT", "bad_proj"),
 				option.WithCredentialsFile(googleAuthFileLocation))
 		}
 

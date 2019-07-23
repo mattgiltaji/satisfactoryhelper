@@ -26,7 +26,10 @@ func MachineHttp(w http.ResponseWriter, r *http.Request) {
 	// maybe get all with query methods filters?
 	// api/machines/$name -> get/add/update/delete specific machine
 
-	if r.Method != http.MethodGet {
+	switch r.Method {
+	case http.MethodGet:
+		handleMachineHttpGet(w, r)
+	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		_, err := fmt.Fprintf(w, "%s method not currently supported", r.Method)
 		if err != nil {
@@ -36,6 +39,10 @@ func MachineHttp(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+}
+
+//do all the http stuff
+func handleMachineHttpGet(w http.ResponseWriter, r *http.Request) {
 	client = getClient(w)
 	if client == nil {
 		http.Error(w, "Error connecting to firestore", http.StatusInternalServerError)
@@ -56,7 +63,6 @@ func MachineHttp(w http.ResponseWriter, r *http.Request) {
 		log.Printf("fmt.Fprintln(w, string(jsonData))): %v", err)
 		return
 	}
-
 }
 
 //getAllMachines returns all machines in the firestore

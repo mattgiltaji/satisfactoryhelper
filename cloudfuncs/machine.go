@@ -21,6 +21,10 @@ type Machine struct {
 
 // MachineHttp is an HTTP Cloud Function that CRUDs a Machine document in the firestore
 func MachineHttp(w http.ResponseWriter, r *http.Request) {
+	//todo: parse url to figure out what this is being called with so we know what we should do
+	// equivalent of api/machines/ -> get all, post all, delete all, batch update
+	// maybe get all with query methods filters?
+	// api/machines/$name -> get/add/update/delete specific machine
 
 	if r.Method != http.MethodGet {
 		w.WriteHeader(http.StatusMethodNotAllowed)
